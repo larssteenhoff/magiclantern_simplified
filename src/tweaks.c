@@ -1799,7 +1799,7 @@ void zoom_trick_step()
 
     if (!timestamp_for_unknown_button) return;
     
-    if ((lv && current_timestamp - timestamp_for_unknown_button >= 300 && numclicks_for_unknown_button == 2) ||
+    if ((lv && current_timestamp - timestamp_for_unknown_button >= 1 && numclicks_for_unknown_button == 2) ||
         //~ (PLAY_MODE && is_pure_play_photo_mode() && current_timestamp - timestamp_for_unknown_button >= 100) ||
         (PLAY_OR_QR_MODE && current_timestamp - timestamp_for_unknown_button >= 100))
     {
