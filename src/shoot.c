@@ -2599,6 +2599,8 @@ int zoom_x5_x10_step()
 }*/
 
 
+static int lv_zoom_triggered_by_old_button = 0;
+
 int handle_zoom_x5_x10(struct event * event)
 {
     if (!lv) return 1;
@@ -2621,11 +2623,13 @@ int handle_zoom_x5_x10(struct event * event)
                 if (zoom_disable_x1) {
                     /* jump directly into x5/x10 (skip x1) */
                     new_zoom = (zoom_disable_x5 ? 10 : 5);
+                    lv_zoom_triggered_by_old_button = 1;
                 }
 #else
                 if (zoom_disable_x5) {
                     /* jump directly into x10 (skip x5) */
                     new_zoom = 10;
+                    lv_zoom_triggered_by_old_button = 1;
                 }
 #endif
                 break;
@@ -2635,6 +2639,7 @@ int handle_zoom_x5_x10(struct event * event)
                 if (zoom_disable_x5) {
                     /* jump from x1 to x10 (skip x5) */
                     new_zoom = 10;
+                    lv_zoom_triggered_by_old_button = 1;
                 }
                 break;
 #endif
@@ -2643,6 +2648,7 @@ int handle_zoom_x5_x10(struct event * event)
                 if (zoom_disable_x10) {
                     /* skip x10, jump from x5 directly into non-zoom */
                     new_zoom = 1;
+                    lv_zoom_triggered_by_old_button = 0;
                 }
                 break;
 
@@ -2657,6 +2663,15 @@ int handle_zoom_x5_x10(struct event * event)
             return 0;
         }
     }
+    
+    /* Handle button release - exit zoom when old zoom button is released */
+    if (event->param == BGMT_UNPRESS_ZOOM_IN && lv_zoom_triggered_by_old_button && lv_dispsize > 1)
+    {
+        set_lv_zoom(1);  // Return to normal view
+        lv_zoom_triggered_by_old_button = 0;
+        return 0;
+    }
+    
     return 1;
 }
 
