@@ -2608,6 +2608,14 @@ int handle_zoom_x5_x10(struct event * event)
     if (get_disp_pressed()) return 1;
     #endif
 
+    #ifdef FEATURE_ZOOM_TRICK_5D3
+    // Check if zoom trick hold mode should override normal zoom behavior
+    if (event->param == BGMT_PRESS_ZOOM_IN && zoom_trick_should_override_zoom_button())
+    {
+        return 0; // Consumed by zoom trick hold mode
+    }
+    #endif
+
     if (event->param == BGMT_PRESS_ZOOM_IN && liveview_display_idle() && !gui_menu_shown())
     {
         /* this only covers zoom modes outside the normal sequence
@@ -4108,6 +4116,7 @@ MENU_PLACEHOLDER("Post Deflicker"),
 
 #ifdef FEATURE_ZOOM_TRICK_5D3
 extern int zoom_trick;
+extern int zoom_trick_level;
 #endif
 
 struct menu_entry tweak_menus_shoot[] = {
@@ -4199,9 +4208,20 @@ struct menu_entry tweak_menus_shoot[] = {
             {
                 .name = "Zoom with old button",
                 .priv = &zoom_trick,
-                .max = 1,
-                .help = "Use the old Zoom In button, as in 5D2. Double-click in LV.",
-                .choices = CHOICES("OFF", "ON (!)"),
+                .max = 3,
+                .help = "Use the old Zoom In button. Double-click, hold, or toggle zoom.",
+                .choices = CHOICES("OFF", "Double-click", "Hold", "Toggle"),
+                .submenu_width = 650,
+                .children = (struct menu_entry[]) {
+                    {
+                        .name = "Zoom Level",
+                        .priv = &zoom_trick_level,
+                        .max = 1,
+                        .choices = CHOICES("5x", "10x"),
+                        .help = "Zoom level for hold/toggle modes: 5x or 10x magnification.",
+                    },
+                    MENU_EOL
+                },
             },
             #endif
             #endif

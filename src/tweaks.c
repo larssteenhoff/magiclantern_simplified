@@ -1770,47 +1770,135 @@ void display_shortcut_key_hints_lv()
 // consider it as shortcut key for LiveView 5x/10x zoom
 
 CONFIG_INT("zoom.trick", zoom_trick, 0);
+CONFIG_INT("zoom.trick.level", zoom_trick_level, 0); // 0=5x, 1=10x
 
 static int countdown_for_unknown_button = 0;
 static int timestamp_for_unknown_button = 0;
 static int numclicks_for_unknown_button = 0;
 
+static int zoom_trick_active = 0;
+static int zoom_trick_toggle_state = 0; // 0 = normal view, 1 = zoomed
+
 void zoom_trick_step()
 {
     if (!zoom_trick) return;
-    if (!lv && !PLAY_OR_QR_MODE) return;
-
-    int current_timestamp = get_ms_clock();
-
-    static int prev_timestamp = 0;
-    if (prev_timestamp != current_timestamp)
-    {
-        if (countdown_for_unknown_button)
-            countdown_for_unknown_button--;
-    }
-    prev_timestamp = current_timestamp;
-
-    if (lv && !liveview_display_idle())
-    {
-        timestamp_for_unknown_button = 0;
-        numclicks_for_unknown_button = 0;
-        return;
-    }
-
-    if (!timestamp_for_unknown_button) return;
     
-    if ((lv && current_timestamp - timestamp_for_unknown_button >= 300 && numclicks_for_unknown_button == 2) ||
-        //~ (PLAY_MODE && is_pure_play_photo_mode() && current_timestamp - timestamp_for_unknown_button >= 100) ||
-        (PLAY_OR_QR_MODE && current_timestamp - timestamp_for_unknown_button >= 100))
+    if (zoom_trick == 1)
     {
+        // Original double-click behavior
+        if (!lv && !PLAY_OR_QR_MODE) return;
 
-        // action!
-        if (zoom_trick == 1) fake_simple_button(BGMT_PRESS_ZOOM_IN);
-        if (zoom_trick == 2) arrow_key_mode_toggle();
+        int current_timestamp = get_ms_clock();
 
+        static int prev_timestamp = 0;
+        if (prev_timestamp != current_timestamp)
+        {
+            if (countdown_for_unknown_button)
+                countdown_for_unknown_button--;
+        }
+        prev_timestamp = current_timestamp;
 
-        timestamp_for_unknown_button = 0;
-        numclicks_for_unknown_button = 0;
+        if (lv && !liveview_display_idle())
+        {
+            timestamp_for_unknown_button = 0;
+            numclicks_for_unknown_button = 0;
+            return;
+        }
+
+        if (!timestamp_for_unknown_button) return;
+        
+        if ((lv && current_timestamp - timestamp_for_unknown_button >= 300 && numclicks_for_unknown_button == 2) ||
+            (PLAY_OR_QR_MODE && current_timestamp - timestamp_for_unknown_button >= 100))
+        {
+            // action! - original double-click zoom
+            fake_simple_button(BGMT_PRESS_ZOOM_IN);
+            timestamp_for_unknown_button = 0;
+            numclicks_for_unknown_button = 0;
+        }
+    }
+    else if (zoom_trick == 2)
+    {
+        // New hold-to-zoom behavior
+        if (!lv) 
+        {
+            // If we're not in liveview and zoom was active, reset it
+            if (zoom_trick_active)
+            {
+                zoom_trick_active = 0;
+            }
+            return;
+        }
+        if (RECORDING) return;
+        
+        // Check if zoom button is currently pressed
+        int zoom_pressed = get_zoom_in_pressed();
+        
+        if (zoom_pressed && !zoom_trick_active)
+        {
+            // Button just pressed - activate zoom
+            zoom_trick_active = 1;
+            int zoom_level = (zoom_trick_level == 0) ? 5 : 10;  // 5x or 10x based on setting
+            set_lv_zoom(zoom_level);
+        }
+        else if (!zoom_pressed && zoom_trick_active)
+        {
+            // Button just released - return to normal view
+            zoom_trick_active = 0;
+            set_lv_zoom(1);  // Return to 1x zoom
+        }
+    }
+    else if (zoom_trick == 3)
+    {
+        // New toggle mode - press button to toggle between 1x and configured zoom level
+        if (!lv) 
+        {
+            // If we're not in liveview and zoom was active, reset it
+            if (zoom_trick_toggle_state)
+            {
+                zoom_trick_toggle_state = 0;
+            }
+            return;
+        }
+        if (RECORDING) return;
+        
+        // Check if zoom button is currently pressed
+        int zoom_pressed = get_zoom_in_pressed();
+        static int prev_zoom_pressed = 0;
+        
+        // Detect button press (transition from not pressed to pressed)
+        if (zoom_pressed && !prev_zoom_pressed)
+        {
+            // Button just pressed - toggle zoom state
+            zoom_trick_toggle_state = !zoom_trick_toggle_state;
+            
+            if (zoom_trick_toggle_state)
+            {
+                // Zoom in to configured level
+                int zoom_level = (zoom_trick_level == 0) ? 5 : 10;  // 5x or 10x based on setting
+                set_lv_zoom(zoom_level);
+            }
+            else
+            {
+                // Zoom out to normal view
+                set_lv_zoom(1);
+            }
+        }
+        
+        prev_zoom_pressed = zoom_pressed;
+    }
+    else
+    {
+        // Mode is off or invalid - make sure zoom state is reset
+        if (zoom_trick_active)
+        {
+            zoom_trick_active = 0;
+            if (lv) set_lv_zoom(1);  // Return to 1x zoom if in liveview
+        }
+        if (zoom_trick_toggle_state)
+        {
+            zoom_trick_toggle_state = 0;
+            if (lv) set_lv_zoom(1);  // Return to 1x zoom if in liveview
+        }
     }
 }
 
@@ -1819,9 +1907,16 @@ PROP_HANDLER(PROP_AF_MODE)
     countdown_for_unknown_button = 2;
 }
 
+// Function to check if zoom trick should override normal zoom button behavior
+int zoom_trick_should_override_zoom_button()
+{
+    return ((zoom_trick == 2 || zoom_trick == 3) && lv && !RECORDING);
+}
+
 int handle_zoom_trick_event(struct event * event)
 {
-    if (!zoom_trick) return 1;
+    // Only handle double-click events when in double-click mode (zoom_trick == 1)
+    if (!zoom_trick || zoom_trick != 1) return 1;
     
     if (event->param == GMT_GUICMD_PRESS_BUTTON_SOMETHING)
     {
