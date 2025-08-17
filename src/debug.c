@@ -1851,7 +1851,6 @@ bool get_halfshutter_pressed() { return HALFSHUTTER_PRESSED && !dofpreview; }
 
 static int zoom_in_pressed = 0;
 static int zoom_out_pressed = 0;
-int get_zoom_in_pressed() { return zoom_in_pressed; }
 int get_zoom_out_pressed() { return zoom_out_pressed; }
 
 int handle_buttons_being_held(struct event * event)

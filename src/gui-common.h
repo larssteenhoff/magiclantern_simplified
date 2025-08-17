@@ -291,7 +291,6 @@ int handle_mlu_handheld(struct event * event);
 int handle_buttons_being_held(struct event * event);
 int handle_ml_menu_erase(struct event * event);
 int handle_zoom_trick_event(struct event * event);
-int zoom_trick_should_override_zoom_button();
 int handle_intervalometer(struct event * event);
 int handle_transparent_overlay(struct event * event);
 int handle_overlays_playback(struct event * event);
@@ -324,7 +323,6 @@ char* get_info_button_name();
 int get_disp_pressed();
 
 /* to be moved from debug.c */
-int get_zoom_in_pressed();
 int get_zoom_out_pressed();
 
 int display_is_on();
